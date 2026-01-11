@@ -183,8 +183,9 @@ def websocket_status():
 if __name__ == '__main__':
     print("🚀 Starting ComfyUI Studio Backend")
     print(f"📡 ComfyUI Server: {COMFY_SERVER}")
-    print(f"🌐 Backend running on http://localhost:5000")
+    print(f"🌐 Backend running on http://localhost:5001")
     print(f"🔗 Civitai API: {CIVITAI_BASE_URL}")
-    print("\n✅ Ready to accept requests!\n")
+    print("\n✅ Ready to accept requests!")
+    print("🔄 Hot reload enabled - server will restart on file changes\n")
     
-    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    app.run(host='0.0.0.0', port=5001, debug=True, threaded=True, use_reloader=True, reloader_type='stat')

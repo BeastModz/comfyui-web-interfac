@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -27,13 +26,13 @@ interface GenerateTabProps {
 }
 
 export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTabProps) {
-  const [selectedModel, setSelectedModel] = useKV<string>('comfy-selected-model', '')
-  const [selectedLora, setSelectedLora] = useKV<string>('comfy-selected-lora', 'None')
-  const [loraStrength, setLoraStrength] = useKV<number>('comfy-lora-strength', 1.0)
-  const [positivePrompt, setPositivePrompt] = useKV<string>('comfy-positive-prompt', '')
-  const [negativePrompt, setNegativePrompt] = useKV<string>('comfy-negative-prompt', 'bad quality, ugly, blurry')
+  const [selectedModel, setSelectedModel] = useState<string>('')
+  const [selectedLora, setSelectedLora] = useState<string>('None')
+  const [loraStrength, setLoraStrength] = useState<number>(1.0)
+  const [positivePrompt, setPositivePrompt] = useState<string>('')
+  const [negativePrompt, setNegativePrompt] = useState<string>('bad quality, ugly, blurry')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedImages, setGeneratedImages] = useKV<string[]>('comfy-generated-images', [])
+  const [generatedImages, setGeneratedImages] = useState<string[]>([])
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {

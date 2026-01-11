@@ -23,16 +23,13 @@ export function BrowseTab() {
   const [isSearching, setIsSearching] = useState(false)
   const [page, setPage] = useState(1)
   const [hasSearched, setHasSearched] = useState(false)
-  const [debugInfo, setDebugInfo] = useState<string>('')
 
   const handleSearch = async () => {
     setIsSearching(true)
     setHasSearched(true)
     setPage(1)
-    setDebugInfo('')
     try {
       console.log('Starting search with params:', { assetType, query: searchQuery.trim(), page: 1, perPage: 12 })
-      setDebugInfo(`Searching for ${assetType} models...`)
       
       const results = await civitaiAPI.search({
         assetType,
@@ -42,7 +39,6 @@ export function BrowseTab() {
       })
       console.log('Search completed, results:', results.length)
       setSearchResults(results)
-      setDebugInfo(`Found ${results.length} results`)
       
       if (results.length === 0) {
         toast.info('No results found. Try a different search term or browse without a query.')
@@ -57,39 +53,6 @@ export function BrowseTab() {
       setSearchResults([])
     } finally {
       setIsSearching(false)
-    }
-  }
-
-  const testDirectAPI = async () => {
-    setDebugInfo('Testing backend connection...')
-    try {
-      const testUrl = 'http://localhost:5000/api/health'
-      console.log('Testing backend health:', testUrl)
-      setDebugInfo(`Testing: ${testUrl}`)
-      
-      const response = await fetch(testUrl)
-      console.log('Backend health response:', response.status)
-      
-      if (!response.ok) {
-        throw new Error('Backend not responding')
-      }
-      
-      const data = await response.json()
-      console.log('Backend health data:', data)
-      setDebugInfo(`Backend is healthy! Server: ${data.server}`)
-      toast.success('Backend connection successful!')
-      
-      setDebugInfo('Now testing Civitai via backend...')
-      const civitaiResponse = await fetch('http://localhost:5000/api/civitai/search?types=LORA&limit=3')
-      const civitaiData = await civitaiResponse.json()
-      console.log('Civitai test data:', civitaiData)
-      setDebugInfo(`Success! Backend connected. Civitai returned ${civitaiData.items?.length || 0} test items.`)
-      toast.success('Civitai API working through backend!')
-    } catch (error) {
-      console.error('Backend test failed:', error)
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      setDebugInfo(`Test failed: ${errorMsg}. Make sure Python backend is running: python backend/server.py`)
-      toast.error('Backend connection failed - is the Python server running on port 5000?')
     }
   }
 
@@ -119,14 +82,6 @@ export function BrowseTab() {
 
   return (
     <div className="space-y-6">
-      <Alert className="border-accent/50 bg-accent/10">
-        <Info className="h-4 w-4" />
-        <AlertDescription className="ml-2">
-          <strong>Using Python Backend:</strong> All API requests are now routed through the Python backend server.
-          Make sure the backend is running on <code className="text-xs bg-muted px-1 py-0.5 rounded">http://localhost:5000</code>
-        </AlertDescription>
-      </Alert>
-
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Search Civitai</CardTitle>
@@ -178,38 +133,23 @@ export function BrowseTab() {
                 {isSearching ? 'Searching...' : 'Browse'}
               </Button>
             </div>
-            {debugInfo && (
-              <div className="text-xs font-mono p-2 bg-muted rounded mt-2">
-                {debugInfo}
-              </div>
-            )}
           </div>
 
-          <div className="flex gap-3">
-            <Button
-              onClick={testDirectAPI}
-              variant="outline"
-              size="sm"
-              className="flex-1 text-xs"
-            >
-              Test Backend Connection
-            </Button>
-            <Button
-              onClick={() => {
-                const searchUrl = searchQuery
-                  ? `https://civitai.com/models?query=${encodeURIComponent(searchQuery)}&types=${assetType}`
-                  : `https://civitai.com/models?types=${assetType}&sort=Most%20Downloaded`
-                window.open(searchUrl, '_blank')
-                toast.info('Opening Civitai in new tab')
-              }}
-              variant="secondary"
-              size="sm"
-              className="flex-1 gap-2 text-xs"
-            >
-              <GlobeHemisphereWest size={16} />
-              Browse Civitai Website
-            </Button>
-          </div>
+          <Button
+            onClick={() => {
+              const searchUrl = searchQuery
+                ? `https://civitai.com/models?query=${encodeURIComponent(searchQuery)}&types=${assetType}`
+                : `https://civitai.com/models?types=${assetType}&sort=Most%20Downloaded`
+              window.open(searchUrl, '_blank')
+              toast.info('Opening Civitai in new tab')
+            }}
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 text-xs"
+          >
+            <GlobeHemisphereWest size={16} />
+            Browse on Civitai Website
+          </Button>
         </CardContent>
       </Card>
 

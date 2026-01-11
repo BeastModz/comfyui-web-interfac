@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -62,6 +61,16 @@ function App() {
   useEffect(() => {
     checkConnection()
   }, [checkConnection])
+
+  useEffect(() => {
+    if (backendStatus === 'connected') return
+
+    const timer = setTimeout(() => {
+      checkConnection()
+    }, 8000)
+
+    return () => clearTimeout(timer)
+  }, [backendStatus, checkConnection])
 
   return (
     <div className="min-h-screen bg-background text-foreground">

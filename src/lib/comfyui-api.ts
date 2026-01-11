@@ -286,12 +286,24 @@ export class ComfyUIAPI {
 
   constructor(config: ComfyUIConfig) {
     this.config = config
-    this.backendUrl = 'http://localhost:5000/api'
+    this.backendUrl = 'http://localhost:5001/api'
   }
 
   async getModels(nodeType: string, inputName: string): Promise<string[]> {
     try {
       const response = await fetch(`${this.backendUrl}/comfy/models/${nodeType}/${inputName}`)
+      
+      if (!response.ok) {
+        console.error(`API returned status ${response.status}`)
+        return []
+      }
+      
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error(`Expected JSON but got ${contentType}`)
+        return []
+      }
+      
       const data = await response.json()
       return data.models || []
     } catch (error) {
@@ -313,10 +325,20 @@ export class ComfyUIAPI {
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'ComfyUI rejected workflow')
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const error = await response.json()
+        throw new Error(error.error || 'ComfyUI rejected workflow')
+      } else {
+        throw new Error(`Server error: ${response.status} ${response.statusText}`)
+      }
     }
 
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error(`Expected JSON response but got ${contentType}`)
+    }
+    
     return response.json()
   }
 
@@ -326,6 +348,16 @@ export class ComfyUIAPI {
 
   async getHistory(promptId: string): Promise<any> {
     const response = await fetch(`${this.backendUrl}/comfy/history/${promptId}`)
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch history: ${response.status}`)
+    }
+    
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error(`Expected JSON but got ${contentType}`)
+    }
+    
     return response.json()
   }
 
@@ -341,6 +373,18 @@ export class ComfyUIAPI {
   async checkBackendHealth(): Promise<boolean> {
     try {
       const response = await fetch(`${this.backendUrl.replace('/api', '')}/api/health`)
+      
+      if (!response.ok) {
+        console.error(`Backend health check failed with status ${response.status}`)
+        return false
+      }
+      
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error(`Backend returned non-JSON response: ${contentType}`)
+        return false
+      }
+      
       const data = await response.json()
       return data.status === 'ok'
     } catch (error) {
@@ -379,7 +423,7 @@ export class ComfyUIAPI {
 }
 
 export class CivitaiAPI {
-  private backendUrl = 'http://localhost:5000/api'
+  private backendUrl = 'http://localhost:5001/api'
 
   async search(params: CivitaiSearchParams): Promise<CivitaiModel[]> {
     const searchParams = new URLSearchParams({
@@ -401,9 +445,23 @@ export class CivitaiAPI {
       console.log('📡 Response status:', response.status, response.statusText)
       
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error('❌ Backend error response:', errorData)
-        throw new Error(errorData.error || `Failed to fetch models: ${response.status}`)
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json()
+          console.error('❌ Backend error response:', errorData)
+          throw new Error(errorData.error || `Failed to fetch models: ${response.status}`)
+        } else {
+          console.error('❌ Backend returned non-JSON error:', contentType)
+          throw new Error(`Backend error: ${response.status} ${response.statusText}`)
+        }
+      }
+      
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('❌ Expected JSON but got:', contentType)
+        const text = await response.text()
+        console.error('Response body:', text.substring(0, 200))
+        throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}`)
       }
       
       const data = await response.json()

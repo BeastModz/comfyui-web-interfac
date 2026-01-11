@@ -27,7 +27,7 @@ interface GenerateTabProps {
 }
 
 export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTabProps) {
-  const [selectedModel, setSelectedModel] = useKV<string>('comfy-selected-model', models[0] || '')
+  const [selectedModel, setSelectedModel] = useKV<string>('comfy-selected-model', '')
   const [selectedLora, setSelectedLora] = useKV<string>('comfy-selected-lora', 'None')
   const [loraStrength, setLoraStrength] = useKV<number>('comfy-lora-strength', 1.0)
   const [positivePrompt, setPositivePrompt] = useKV<string>('comfy-positive-prompt', '')
@@ -36,21 +36,14 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
   const [generatedImages, setGeneratedImages] = useKV<string[]>('comfy-generated-images', [])
   const wsRef = useRef<WebSocket | null>(null)
 
-  const currentLoraStrength = loraStrength ?? 1.0
-  const currentPositivePrompt = positivePrompt ?? ''
-  const currentNegativePrompt = negativePrompt ?? 'bad quality, ugly, blurry'
-  const currentSelectedLora = selectedLora ?? 'None'
-  const currentSelectedModel = selectedModel ?? ''
-  const currentGeneratedImages = generatedImages ?? []
-
   useEffect(() => {
-    if (models.length > 0 && !currentSelectedModel) {
+    if (models.length > 0 && !selectedModel) {
       setSelectedModel(models[0])
     }
-  }, [models, currentSelectedModel, setSelectedModel])
+  }, [models, selectedModel, setSelectedModel])
 
   const handleGenerate = async () => {
-    if (!currentSelectedModel) {
+    if (!selectedModel) {
       toast.error('Please select a model')
       return
     }
@@ -59,11 +52,11 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
     
     try {
       const params: GenerationParams = {
-        modelName: currentSelectedModel,
-        loraName: currentSelectedLora !== 'None' ? currentSelectedLora : undefined,
-        loraStrength: currentLoraStrength,
-        positivePrompt: currentPositivePrompt,
-        negativePrompt: currentNegativePrompt
+        modelName: selectedModel,
+        loraName: selectedLora !== 'None' ? selectedLora : undefined,
+        loraStrength: loraStrength ?? 1.0,
+        positivePrompt: positivePrompt ?? '',
+        negativePrompt: negativePrompt ?? 'bad quality, ugly, blurry'
       }
 
       const workflow = comfyAPI.buildWorkflow(params)
@@ -155,7 +148,7 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
             <div className="space-y-2">
               <Label htmlFor="model-select">Model (GGUF)</Label>
               <Select
-                value={selectedModel}
+                value={selectedModel || ''}
                 onValueChange={setSelectedModel}
                 disabled={!isConnected || models.length === 0}
               >
@@ -175,7 +168,7 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
             <div className="space-y-2">
               <Label htmlFor="lora-select">LoRA</Label>
               <Select
-                value={selectedLora}
+                value={selectedLora || 'None'}
                 onValueChange={setSelectedLora}
                 disabled={!isConnected}
               >
@@ -192,12 +185,12 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
               </Select>
             </div>
 
-            {currentSelectedLora !== 'None' && (
+            {selectedLora !== 'None' && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="lora-strength">LoRA Strength</Label>
                   <span className="text-sm font-mono text-muted-foreground">
-                    {currentLoraStrength.toFixed(2)}
+                    {(loraStrength ?? 1.0).toFixed(2)}
                   </span>
                 </div>
                 <Slider
@@ -205,7 +198,7 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
                   min={0}
                   max={3}
                   step={0.1}
-                  value={[currentLoraStrength]}
+                  value={[loraStrength ?? 1.0]}
                   onValueChange={([value]) => setLoraStrength(value)}
                   disabled={!isConnected}
                 />
@@ -216,7 +209,7 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
               <Label htmlFor="positive-prompt">Positive Prompt</Label>
               <Textarea
                 id="positive-prompt"
-                value={positivePrompt}
+                value={positivePrompt || ''}
                 onChange={(e) => setPositivePrompt(e.target.value)}
                 placeholder="Describe your image..."
                 rows={4}
@@ -228,7 +221,7 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
               <Label htmlFor="negative-prompt">Negative Prompt</Label>
               <Textarea
                 id="negative-prompt"
-                value={negativePrompt}
+                value={negativePrompt || 'bad quality, ugly, blurry'}
                 onChange={(e) => setNegativePrompt(e.target.value)}
                 placeholder="What to avoid..."
                 rows={3}
@@ -270,7 +263,7 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {currentGeneratedImages.length === 0 ? (
+          {(generatedImages ?? []).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
               <ImageIcon size={64} weight="thin" className="mb-4 opacity-50" />
               <p>No images generated yet</p>
@@ -280,7 +273,7 @@ export function GenerateTab({ comfyAPI, models, loras, isConnected }: GenerateTa
             <ScrollArea className="h-[calc(100vh-280px)]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-fade-in">
                 <AnimatePresence>
-                  {currentGeneratedImages.map((url, index) => (
+                  {(generatedImages ?? []).map((url, index) => (
                     <motion.div
                       key={url}
                       initial={{ opacity: 0, y: 20 }}

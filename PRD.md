@@ -1,6 +1,6 @@
 # Planning Guide
 
-A powerful web-based frontend for ComfyUI that enables users to generate AI images through an intuitive interface and discover new models from Civitai.
+A powerful web-based frontend for ComfyUI that enables users to generate AI images through an intuitive interface and discover new models from Civitai, using a Python backend to bypass browser security restrictions.
 
 **Experience Qualities**:
 1. **Powerful** - Professional-grade controls that give users complete command over AI image generation with clear feedback on processing status
@@ -8,7 +8,7 @@ A powerful web-based frontend for ComfyUI that enables users to generate AI imag
 3. **Streamlined** - Remove complexity without sacrificing functionality, making advanced AI image generation accessible
 
 **Complexity Level**: Light Application (multiple features with basic state)
-This app combines image generation controls, real-time progress tracking, and model browsing - multiple interconnected features with persistent configuration state.
+This app combines image generation controls, real-time progress tracking, and model browsing with a Python Flask backend server that acts as a proxy between the browser and ComfyUI/Civitai APIs to avoid CORS security restrictions.
 
 ## Essential Features
 

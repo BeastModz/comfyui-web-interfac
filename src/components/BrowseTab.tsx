@@ -61,29 +61,35 @@ export function BrowseTab() {
   }
 
   const testDirectAPI = async () => {
-    setDebugInfo('Testing direct API call...')
+    setDebugInfo('Testing backend connection...')
     try {
-      const testUrl = 'https://civitai.com/api/v1/models?limit=3&types=LORA'
-      console.log('Direct test URL:', testUrl)
+      const testUrl = 'http://localhost:5000/api/health'
+      console.log('Testing backend health:', testUrl)
       setDebugInfo(`Testing: ${testUrl}`)
       
-      const response = await fetch(testUrl, {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'default'
-      })
-      console.log('Test response status:', response.status)
-      setDebugInfo(`Response status: ${response.status}`)
+      const response = await fetch(testUrl)
+      console.log('Backend health response:', response.status)
+      
+      if (!response.ok) {
+        throw new Error('Backend not responding')
+      }
       
       const data = await response.json()
-      console.log('Test data:', data)
-      setDebugInfo(`Success! Got ${data.items?.length || 0} items. Check console for details.`)
-      toast.success('API test successful! Check console for details.')
+      console.log('Backend health data:', data)
+      setDebugInfo(`Backend is healthy! Server: ${data.server}`)
+      toast.success('Backend connection successful!')
+      
+      setDebugInfo('Now testing Civitai via backend...')
+      const civitaiResponse = await fetch('http://localhost:5000/api/civitai/search?types=LORA&limit=3')
+      const civitaiData = await civitaiResponse.json()
+      console.log('Civitai test data:', civitaiData)
+      setDebugInfo(`Success! Backend connected. Civitai returned ${civitaiData.items?.length || 0} test items.`)
+      toast.success('Civitai API working through backend!')
     } catch (error) {
-      console.error('Direct API test failed:', error)
+      console.error('Backend test failed:', error)
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      setDebugInfo(`Test failed: ${errorMsg}. CORS may be blocking the request. Try downloading directly from civitai.com`)
-      toast.error('API test failed - likely blocked by browser CORS policy')
+      setDebugInfo(`Test failed: ${errorMsg}. Make sure Python backend is running: python backend/server.py`)
+      toast.error('Backend connection failed - is the Python server running on port 5000?')
     }
   }
 
@@ -116,8 +122,8 @@ export function BrowseTab() {
       <Alert className="border-accent/50 bg-accent/10">
         <Info className="h-4 w-4" />
         <AlertDescription className="ml-2">
-          <strong>Note:</strong> Direct API access to Civitai may be blocked by browser security (CORS).
-          If the search doesn't work, use the "Browse Civitai" button below to download models manually.
+          <strong>Using Python Backend:</strong> All API requests are now routed through the Python backend server.
+          Make sure the backend is running on <code className="text-xs bg-muted px-1 py-0.5 rounded">http://localhost:5000</code>
         </AlertDescription>
       </Alert>
 
@@ -186,7 +192,7 @@ export function BrowseTab() {
               size="sm"
               className="flex-1 text-xs"
             >
-              Test API Connection
+              Test Backend Connection
             </Button>
             <Button
               onClick={() => {

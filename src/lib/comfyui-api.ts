@@ -282,16 +282,18 @@ const WORKFLOW_TEMPLATE = {
 
 export class ComfyUIAPI {
   private config: ComfyUIConfig
+  private backendUrl: string
 
   constructor(config: ComfyUIConfig) {
     this.config = config
+    this.backendUrl = 'http://localhost:5000/api'
   }
 
   async getModels(nodeType: string, inputName: string): Promise<string[]> {
     try {
-      const response = await fetch(`http://${this.config.server}/object_info/${nodeType}`)
+      const response = await fetch(`${this.backendUrl}/comfy/models/${nodeType}/${inputName}`)
       const data = await response.json()
-      return data[nodeType]?.input?.required?.[inputName]?.[0] || []
+      return data.models || []
     } catch (error) {
       console.error(`Error fetching ${nodeType}:`, error)
       return []
@@ -300,40 +302,51 @@ export class ComfyUIAPI {
 
   async queuePrompt(workflow: any): Promise<{ prompt_id: string }> {
     const payload = {
-      prompt: workflow,
+      workflow: workflow,
       client_id: this.config.clientId
     }
 
-    const response = await fetch(`http://${this.config.server}/prompt`, {
+    const response = await fetch(`${this.backendUrl}/comfy/queue`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`ComfyUI rejected workflow: ${error}`)
+      const error = await response.json()
+      throw new Error(error.error || 'ComfyUI rejected workflow')
     }
 
     return response.json()
   }
 
   async interrupt(): Promise<void> {
-    await fetch(`http://${this.config.server}/interrupt`, { method: 'POST' })
+    await fetch(`${this.backendUrl}/comfy/interrupt`, { method: 'POST' })
   }
 
   async getHistory(promptId: string): Promise<any> {
-    const response = await fetch(`http://${this.config.server}/history/${promptId}`)
+    const response = await fetch(`${this.backendUrl}/comfy/history/${promptId}`)
     return response.json()
   }
 
   getImageUrl(filename: string, subfolder: string, type: string): string {
     const params = new URLSearchParams({ filename, subfolder, type })
-    return `http://${this.config.server}/view?${params}`
+    return `${this.backendUrl}/comfy/view?${params}`
   }
 
   createWebSocket(): WebSocket {
     return new WebSocket(`ws://${this.config.server}/ws?clientId=${this.config.clientId}`)
+  }
+
+  async checkBackendHealth(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.backendUrl.replace('/api', '')}/api/health`)
+      const data = await response.json()
+      return data.status === 'ok'
+    } catch (error) {
+      console.error('Backend health check failed:', error)
+      return false
+    }
   }
 
   buildWorkflow(params: GenerationParams): any {
@@ -366,37 +379,31 @@ export class ComfyUIAPI {
 }
 
 export class CivitaiAPI {
-  private baseUrl = 'https://civitai.com/api/v1'
+  private backendUrl = 'http://localhost:5000/api'
 
   async search(params: CivitaiSearchParams): Promise<CivitaiModel[]> {
     const searchParams = new URLSearchParams({
       limit: params.perPage.toString(),
       page: params.page.toString(),
-      sort: 'Most Downloaded'
+      types: params.assetType
     })
-
-    searchParams.set('types', params.assetType)
 
     if (params.query && params.query.trim()) {
       searchParams.set('query', params.query.trim())
     }
 
-    const url = `${this.baseUrl}/models?${searchParams.toString()}`
-    console.log('🔍 Civitai API request:', url)
+    const url = `${this.backendUrl}/civitai/search?${searchParams.toString()}`
+    console.log('🔍 Civitai API request via backend:', url)
 
     try {
-      const response = await fetch(url, {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'default'
-      })
+      const response = await fetch(url)
       
       console.log('📡 Response status:', response.status, response.statusText)
       
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Civitai API error response:', errorText)
-        throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`)
+        const errorData = await response.json()
+        console.error('❌ Backend error response:', errorData)
+        throw new Error(errorData.error || `Failed to fetch models: ${response.status}`)
       }
       
       const data = await response.json()
@@ -415,7 +422,7 @@ export class CivitaiAPI {
     } catch (error) {
       console.error('❌ Civitai search error:', error)
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Network error - unable to reach Civitai API. This may be a CORS issue or network problem.')
+        throw new Error('Backend server not reachable. Please ensure the Python backend is running on http://localhost:5000')
       }
       throw error
     }

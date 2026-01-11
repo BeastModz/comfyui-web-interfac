@@ -18,10 +18,25 @@ function App() {
   const [isCheckingConnection, setIsCheckingConnection] = useState(true)
   const [models, setModels] = useState<string[]>([])
   const [loras, setLoras] = useState<string[]>([])
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'error'>('checking')
 
   const checkConnection = useCallback(async () => {
     setIsCheckingConnection(true)
+    setBackendStatus('checking')
+    
     try {
+      const backendHealthy = await comfyAPI.checkBackendHealth()
+      
+      if (!backendHealthy) {
+        setBackendStatus('error')
+        setIsConnected(false)
+        toast.error('Backend server not running. Please start the Python backend on port 5000.')
+        setIsCheckingConnection(false)
+        return
+      }
+      
+      setBackendStatus('connected')
+      
       const modelList = await comfyAPI.getModels('UnetLoaderGGUF', 'unet_name')
       const loraList = await comfyAPI.getModels('LoraLoader', 'lora_name')
       
@@ -31,10 +46,14 @@ function App() {
       
       if (modelList.length === 0) {
         toast.warning('No models found. Please install models in ComfyUI.')
+      } else {
+        toast.success('Connected to ComfyUI successfully!')
       }
     } catch (error) {
       setIsConnected(false)
+      setBackendStatus('error')
       console.error('Connection error:', error)
+      toast.error(error instanceof Error ? error.message : 'Connection failed')
     } finally {
       setIsCheckingConnection(false)
     }
@@ -53,14 +72,32 @@ function App() {
             ComfyUI Studio
           </h1>
           <p className="text-muted-foreground">
-            Professional AI image generation interface
+            Professional AI image generation interface with Python backend
           </p>
         </header>
 
-        {!isConnected && !isCheckingConnection && (
+        {backendStatus === 'error' && (
           <Alert className="mb-6 border-destructive/50 bg-destructive/10">
             <AlertDescription>
-              Cannot connect to ComfyUI at {COMFY_SERVER}. Please ensure ComfyUI is running.
+              <strong>Backend Connection Error:</strong> The Python backend server is not running.
+              <br />
+              Please start it with: <code className="bg-muted px-2 py-1 rounded text-xs ml-2">python backend/server.py</code>
+              <button
+                onClick={checkConnection}
+                className="ml-4 underline hover:text-foreground transition-colors"
+              >
+                Retry Connection
+              </button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {backendStatus === 'connected' && !isConnected && !isCheckingConnection && (
+          <Alert className="mb-6 border-destructive/50 bg-destructive/10">
+            <AlertDescription>
+              <strong>ComfyUI Connection Error:</strong> Backend is running but cannot connect to ComfyUI at {COMFY_SERVER}.
+              <br />
+              Please ensure ComfyUI is running with: <code className="bg-muted px-2 py-1 rounded text-xs ml-2">python main.py</code>
               <button
                 onClick={checkConnection}
                 className="ml-4 underline hover:text-foreground transition-colors"

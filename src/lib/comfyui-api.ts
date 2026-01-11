@@ -370,33 +370,72 @@ export class CivitaiAPI {
 
   async search(params: CivitaiSearchParams): Promise<CivitaiModel[]> {
     const searchParams = new URLSearchParams({
-      types: params.assetType,
-      query: params.query,
       limit: params.perPage.toString(),
       page: params.page.toString(),
-      sort: 'Highest Rated'
+      sort: 'Most Downloaded',
+      types: params.assetType
+    })
+
+    if (params.query && params.query.trim()) {
+      searchParams.set('query', params.query.trim())
+    }
+
+    const url = `${this.baseUrl}/models?${searchParams.toString()}`
+    console.log('Civitai API request:', url)
+    console.log('Search params:', {
+      assetType: params.assetType,
+      query: params.query,
+      page: params.page,
+      perPage: params.perPage
     })
 
     try {
-      const response = await fetch(`${this.baseUrl}/models?${searchParams}`)
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Civitai API error response:', errorText)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
       const data = await response.json()
-      return data.items || []
+      console.log('Civitai API response:', {
+        itemsCount: data.items?.length || 0,
+        metadata: data.metadata
+      })
+      
+      if (!data.items || !Array.isArray(data.items)) {
+        console.warn('Unexpected API response structure:', data)
+        return []
+      }
+      
+      return data.items
     } catch (error) {
       console.error('Civitai search error:', error)
-      return []
+      throw error
     }
   }
 
   getPreviewImage(model: CivitaiModel): string | null {
     const images = model.modelVersions?.[0]?.images
-    return images?.[0]?.url || null
+    if (images && images.length > 0) {
+      return images[0].url
+    }
+    return null
   }
 
   getDownloadUrl(model: CivitaiModel): string | null {
     const files = model.modelVersions?.[0]?.files
-    for (const file of files || []) {
-      if (file.downloadUrl) {
-        return file.downloadUrl
+    if (files && Array.isArray(files)) {
+      for (const file of files) {
+        if (file.downloadUrl) {
+          return file.downloadUrl
+        }
       }
     }
     return null

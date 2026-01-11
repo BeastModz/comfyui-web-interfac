@@ -21,33 +21,39 @@ export function BrowseTab() {
   const [searchResults, setSearchResults] = useState<CivitaiModel[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [page, setPage] = useState(1)
+  const [hasSearched, setHasSearched] = useState(false)
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      toast.error('Please enter a search query')
-      return
-    }
-
     setIsSearching(true)
+    setHasSearched(true)
     try {
       const results = await civitaiAPI.search({
         assetType,
-        query: searchQuery,
+        query: searchQuery.trim(),
         page,
         perPage: 12
       })
       setSearchResults(results)
       
       if (results.length === 0) {
-        toast.info('No results found')
+        toast.info('No results found. Try a different search term.')
       } else {
-        toast.success(`Found ${results.length} results`)
+        toast.success(`Found ${results.length} ${assetType === 'LORA' ? 'LoRA' : 'checkpoint'} models`)
       }
     } catch (error) {
       console.error('Search error:', error)
-      toast.error('Search failed')
+      toast.error(`Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setSearchResults([])
     } finally {
       setIsSearching(false)
+    }
+  }
+
+  const handleAssetTypeChange = (newType: 'LORA' | 'Checkpoint') => {
+    setAssetType(newType)
+    if (hasSearched) {
+      setSearchResults([])
+      setHasSearched(false)
     }
   }
 
@@ -78,7 +84,7 @@ export function BrowseTab() {
             <Label>Asset Type</Label>
             <RadioGroup
               value={assetType}
-              onValueChange={(value) => setAssetType(value as 'LORA' | 'Checkpoint')}
+              onValueChange={handleAssetTypeChange}
               className="flex gap-4"
             >
               <div className="flex items-center space-x-2">
@@ -97,14 +103,14 @@ export function BrowseTab() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="search-input">Search Query</Label>
+            <Label htmlFor="search-input">Search Query (optional)</Label>
             <div className="flex gap-3">
               <Input
                 id="search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Enter search term..."
+                placeholder="Leave empty to browse popular models..."
                 className="flex-1"
               />
               <Button
@@ -114,7 +120,7 @@ export function BrowseTab() {
                 size="lg"
               >
                 <MagnifyingGlass size={20} weight="bold" />
-                {isSearching ? 'Searching...' : 'Search'}
+                {isSearching ? 'Searching...' : 'Browse'}
               </Button>
             </div>
           </div>
@@ -146,8 +152,12 @@ export function BrowseTab() {
           ) : searchResults.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
               <MagnifyingGlass size={64} weight="thin" className="mb-4 opacity-50" />
-              <p>No results yet</p>
-              <p className="text-sm mt-1">Search for models or LoRAs to get started</p>
+              <p className="text-lg">{hasSearched ? 'No results found' : 'Ready to browse'}</p>
+              <p className="text-sm mt-1">
+                {hasSearched 
+                  ? 'Try a different search term or browse without a query' 
+                  : 'Click Browse to see popular models or enter a search term'}
+              </p>
             </div>
           ) : (
             <ScrollArea className="h-[calc(100vh-400px)]">

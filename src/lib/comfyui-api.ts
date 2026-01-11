@@ -369,24 +369,20 @@ export class CivitaiAPI {
   private baseUrl = 'https://civitai.com/api/v1'
 
   async search(params: CivitaiSearchParams): Promise<CivitaiModel[]> {
-    const typeMapping: Record<string, string> = {
-      'LORA': 'LORA',
-      'Checkpoint': 'Checkpoint'
-    }
-    
     const searchParams = new URLSearchParams({
       limit: params.perPage.toString(),
       page: params.page.toString(),
-      sort: 'Highest Rated',
-      types: typeMapping[params.assetType]
+      sort: 'Most Downloaded'
     })
+
+    searchParams.set('types', params.assetType)
 
     if (params.query && params.query.trim()) {
       searchParams.set('query', params.query.trim())
     }
 
     const url = `${this.baseUrl}/models?${searchParams.toString()}`
-    console.log('Civitai API request:', url)
+    console.log('🔍 Civitai API request:', url)
 
     try {
       const response = await fetch(url, {
@@ -396,26 +392,32 @@ export class CivitaiAPI {
         }
       })
       
+      console.log('📡 Response status:', response.status, response.statusText)
+      
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('Civitai API error response:', errorText)
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        console.error('❌ Civitai API error response:', errorText)
+        throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`)
       }
       
       const data = await response.json()
-      console.log('Civitai API response:', {
+      console.log('✅ Civitai API response:', {
         itemsCount: data.items?.length || 0,
-        metadata: data.metadata
+        metadata: data.metadata,
+        firstItem: data.items?.[0]
       })
       
       if (!data.items || !Array.isArray(data.items)) {
-        console.warn('Unexpected API response structure:', data)
+        console.warn('⚠️ Unexpected API response structure:', data)
         return []
       }
       
       return data.items
     } catch (error) {
-      console.error('Civitai search error:', error)
+      console.error('❌ Civitai search error:', error)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error - unable to reach Civitai API. This may be a CORS issue or network problem.')
+      }
       throw error
     }
   }

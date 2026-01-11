@@ -22,30 +22,62 @@ export function BrowseTab() {
   const [isSearching, setIsSearching] = useState(false)
   const [page, setPage] = useState(1)
   const [hasSearched, setHasSearched] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<string>('')
 
   const handleSearch = async () => {
     setIsSearching(true)
     setHasSearched(true)
+    setPage(1)
+    setDebugInfo('')
     try {
+      console.log('Starting search with params:', { assetType, query: searchQuery.trim(), page: 1, perPage: 12 })
+      setDebugInfo(`Searching for ${assetType} models...`)
+      
       const results = await civitaiAPI.search({
         assetType,
         query: searchQuery.trim(),
-        page,
+        page: 1,
         perPage: 12
       })
+      console.log('Search completed, results:', results.length)
       setSearchResults(results)
+      setDebugInfo(`Found ${results.length} results`)
       
       if (results.length === 0) {
-        toast.info('No results found. Try a different search term.')
+        toast.info('No results found. Try a different search term or browse without a query.')
       } else {
         toast.success(`Found ${results.length} ${assetType === 'LORA' ? 'LoRA' : 'checkpoint'} models`)
       }
     } catch (error) {
       console.error('Search error:', error)
-      toast.error(`Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      setDebugInfo(`Error: ${errorMessage}`)
+      toast.error(`Search failed: ${errorMessage}`)
       setSearchResults([])
     } finally {
       setIsSearching(false)
+    }
+  }
+
+  const testDirectAPI = async () => {
+    setDebugInfo('Testing direct API call...')
+    try {
+      const testUrl = 'https://civitai.com/api/v1/models?limit=3&types=LORA&sort=Most Downloaded'
+      console.log('Direct test URL:', testUrl)
+      setDebugInfo(`Testing: ${testUrl}`)
+      
+      const response = await fetch(testUrl)
+      console.log('Test response status:', response.status)
+      setDebugInfo(`Response status: ${response.status}`)
+      
+      const data = await response.json()
+      console.log('Test data:', data)
+      setDebugInfo(`Success! Got ${data.items?.length || 0} items. Check console for details.`)
+      toast.success('API test successful! Check console for details.')
+    } catch (error) {
+      console.error('Direct API test failed:', error)
+      setDebugInfo(`Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error('API test failed. Check console for details.')
     }
   }
 
@@ -123,6 +155,19 @@ export function BrowseTab() {
                 {isSearching ? 'Searching...' : 'Browse'}
               </Button>
             </div>
+            {debugInfo && (
+              <div className="text-xs font-mono p-2 bg-muted rounded mt-2">
+                {debugInfo}
+              </div>
+            )}
+            <Button
+              onClick={testDirectAPI}
+              variant="outline"
+              size="sm"
+              className="w-full text-xs"
+            >
+              Test API Connection
+            </Button>
           </div>
         </CardContent>
       </Card>

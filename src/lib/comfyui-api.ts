@@ -387,9 +387,8 @@ export class CivitaiAPI {
     try {
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        mode: 'cors',
+        cache: 'default'
       })
       
       console.log('📡 Response status:', response.status, response.statusText)

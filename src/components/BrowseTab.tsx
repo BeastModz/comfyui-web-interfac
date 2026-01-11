@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -7,7 +7,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { MagnifyingGlass, DownloadSimple } from '@phosphor-icons/react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { MagnifyingGlass, DownloadSimple, GlobeHemisphereWest, Info } from '@phosphor-icons/react'
 import { CivitaiAPI } from '@/lib/comfyui-api'
 import { CivitaiModel } from '@/lib/types'
 import { toast } from 'sonner'
@@ -62,11 +63,15 @@ export function BrowseTab() {
   const testDirectAPI = async () => {
     setDebugInfo('Testing direct API call...')
     try {
-      const testUrl = 'https://civitai.com/api/v1/models?limit=3&types=LORA&sort=Most Downloaded'
+      const testUrl = 'https://civitai.com/api/v1/models?limit=3&types=LORA'
       console.log('Direct test URL:', testUrl)
       setDebugInfo(`Testing: ${testUrl}`)
       
-      const response = await fetch(testUrl)
+      const response = await fetch(testUrl, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'default'
+      })
       console.log('Test response status:', response.status)
       setDebugInfo(`Response status: ${response.status}`)
       
@@ -76,8 +81,9 @@ export function BrowseTab() {
       toast.success('API test successful! Check console for details.')
     } catch (error) {
       console.error('Direct API test failed:', error)
-      setDebugInfo(`Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      toast.error('API test failed. Check console for details.')
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      setDebugInfo(`Test failed: ${errorMsg}. CORS may be blocking the request. Try downloading directly from civitai.com`)
+      toast.error('API test failed - likely blocked by browser CORS policy')
     }
   }
 
@@ -107,9 +113,20 @@ export function BrowseTab() {
 
   return (
     <div className="space-y-6">
+      <Alert className="border-accent/50 bg-accent/10">
+        <Info className="h-4 w-4" />
+        <AlertDescription className="ml-2">
+          <strong>Note:</strong> Direct API access to Civitai may be blocked by browser security (CORS).
+          If the search doesn't work, use the "Browse Civitai" button below to download models manually.
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Search Civitai</CardTitle>
+          <CardDescription>
+            Search and download LoRAs and Checkpoint models from Civitai
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
@@ -160,13 +177,31 @@ export function BrowseTab() {
                 {debugInfo}
               </div>
             )}
+          </div>
+
+          <div className="flex gap-3">
             <Button
               onClick={testDirectAPI}
               variant="outline"
               size="sm"
-              className="w-full text-xs"
+              className="flex-1 text-xs"
             >
               Test API Connection
+            </Button>
+            <Button
+              onClick={() => {
+                const searchUrl = searchQuery
+                  ? `https://civitai.com/models?query=${encodeURIComponent(searchQuery)}&types=${assetType}`
+                  : `https://civitai.com/models?types=${assetType}&sort=Most%20Downloaded`
+                window.open(searchUrl, '_blank')
+                toast.info('Opening Civitai in new tab')
+              }}
+              variant="secondary"
+              size="sm"
+              className="flex-1 gap-2 text-xs"
+            >
+              <GlobeHemisphereWest size={16} />
+              Browse Civitai Website
             </Button>
           </div>
         </CardContent>
@@ -195,14 +230,30 @@ export function BrowseTab() {
               ))}
             </div>
           ) : searchResults.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-              <MagnifyingGlass size={64} weight="thin" className="mb-4 opacity-50" />
-              <p className="text-lg">{hasSearched ? 'No results found' : 'Ready to browse'}</p>
-              <p className="text-sm mt-1">
-                {hasSearched 
-                  ? 'Try a different search term or browse without a query' 
-                  : 'Click Browse to see popular models or enter a search term'}
-              </p>
+            <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground space-y-6">
+              <div>
+                <MagnifyingGlass size={64} weight="thin" className="mb-4 opacity-50" />
+                <p className="text-lg">{hasSearched ? 'No results found' : 'Ready to browse'}</p>
+                <p className="text-sm mt-1">
+                  {hasSearched 
+                    ? 'Try a different search term or browse without a query' 
+                    : 'Click Browse to see popular models or enter a search term'}
+                </p>
+              </div>
+              
+              <Alert className="max-w-2xl text-left">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="ml-2 space-y-2">
+                  <p className="font-semibold">How to install models from Civitai:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-sm">
+                    <li>Click "Browse Civitai Website" above to open Civitai</li>
+                    <li>Download the model file (.safetensors)</li>
+                    <li>Place LoRA files in your ComfyUI <code className="text-xs bg-muted px-1 py-0.5 rounded">models/loras/</code> folder</li>
+                    <li>Place Checkpoint files in your ComfyUI <code className="text-xs bg-muted px-1 py-0.5 rounded">models/checkpoints/</code> folder</li>
+                    <li>Refresh this app to see the new models</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
             </div>
           ) : (
             <ScrollArea className="h-[calc(100vh-400px)]">

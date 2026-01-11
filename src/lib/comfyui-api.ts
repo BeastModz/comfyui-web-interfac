@@ -369,11 +369,16 @@ export class CivitaiAPI {
   private baseUrl = 'https://civitai.com/api/v1'
 
   async search(params: CivitaiSearchParams): Promise<CivitaiModel[]> {
+    const typeMapping: Record<string, string> = {
+      'LORA': 'LORA',
+      'Checkpoint': 'Checkpoint'
+    }
+    
     const searchParams = new URLSearchParams({
       limit: params.perPage.toString(),
       page: params.page.toString(),
-      sort: 'Most Downloaded',
-      types: params.assetType
+      sort: 'Highest Rated',
+      types: typeMapping[params.assetType]
     })
 
     if (params.query && params.query.trim()) {
@@ -382,12 +387,6 @@ export class CivitaiAPI {
 
     const url = `${this.baseUrl}/models?${searchParams.toString()}`
     console.log('Civitai API request:', url)
-    console.log('Search params:', {
-      assetType: params.assetType,
-      query: params.query,
-      page: params.page,
-      perPage: params.perPage
-    })
 
     try {
       const response = await fetch(url, {
